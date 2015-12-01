@@ -68,6 +68,8 @@ public:
                             s_send(frontend_,conn_name);
                     }
                     else {
+                        // [client_addr][worker_addr][logname][data]
+                        std::string log_name=s_recv(frontend_);
                         std::string data=s_recv(frontend_);
                         // std::cout << "broke recvied "<<data << "\n";
                         int trytimes=0;
@@ -75,6 +77,7 @@ public:
 
                         while (trytimes++<TRY_TIMES){
                             if(s_sendmore(backend_,req)){
+                                s_sendmore(backend_,log_name);
                                 s_send(backend_,data);
                                 if(s_sendmore(frontend_,client_addr)){
                                     // std::cout << "broke " << "\n";
@@ -89,21 +92,21 @@ public:
                         if(!havesend){
                             RemoveInvalidConn(req);
                             std::string conn_name=PickOneConn();
-                            // while ((conn_name=PickOneConn())!=HAS_NO_WORKER) {
-                            //     if(TestConn(conn_name)){
-                            //         s_sendmore(frontend_,client_addr);
-                            //         s_send(frontend_,conn_name);
-                            //         break;
-                            //     }
-                            //     else{
-                            //         RemoveInvalidConn(conn_name);
-                            //     }
-                            // }
+                            while ((conn_name=PickOneConn())!=HAS_NO_WORKER) {
+                                if(s_sendmore(backend_,conn_name)){
+                                    s_sendmore(backend_,log_name);
+                                    s_send(backend_,data);
+                                    break;
+                                }
+                                else{
+                                    RemoveInvalidConn(conn_name);
+                                }
+                            }
                             // if(conn_name!=HAS_NO_WORKER){
-                                s_sendmore(frontend_,client_addr);
-                                if(conn_name!=HAS_NO_WORKER)
-                                    s_sendmore(frontend_,WORKER_CHANGED);
-                                s_send(frontend_,conn_name);
+                            s_sendmore(frontend_,client_addr);
+                            if(conn_name!=HAS_NO_WORKER)
+                                s_sendmore(frontend_,WORKER_CHANGED);
+                            s_send(frontend_,conn_name);
                             // }
                             std::cout << "send to backend failed" << "\n";
                         }
